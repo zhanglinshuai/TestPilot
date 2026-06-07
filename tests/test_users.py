@@ -36,7 +36,7 @@ async def async_client():
 #测试登录功能正常使用
 @pytest.mark.asyncio
 async def test_create_user_success(async_client):
-    response = await async_client.post("/user/create",json={
+    response = await async_client.post("/user/register",json={
         "username":"linshuai",
         "safe_password":"123456",
         "email":"zhanglinshuai01@gmail.com",
@@ -54,13 +54,13 @@ async def test_create_user_success(async_client):
 #测试登录名不能相同
 @pytest.mark.asyncio
 async def test_create_user_same_name(async_client):
-    await async_client.post("/user/create",json={
+    await async_client.post("/user/register",json={
         "username":"linshuai",
         "safe_password":"123456",
         "email":"zhanglinshuai01@gmail.com",
         "role":"admin"
     })
-    same_user = await async_client.post("/user/create", json={
+    same_user = await async_client.post("/user/register", json={
         "username": "linshuai",
         "safe_password": "654321",
         "email": "zhanglinshuai01@gmail.com",
@@ -72,7 +72,7 @@ async def test_create_user_same_name(async_client):
 #测试校验密码
 @pytest.mark.asyncio
 async def test_create_user_missing_password(async_client):
-    response = await async_client.post("/user/create",json={
+    response = await async_client.post("/user/register",json={
         "username":"linshuai",
         "role": "admin"
     })
@@ -81,10 +81,87 @@ async def test_create_user_missing_password(async_client):
 #测试角色范围
 @pytest.mark.asyncio
 async def test_create_user_role_range(async_client):
-    response = await async_client.post("/user/create",json={
+    response = await async_client.post("/user/register",json={
         "username":"linshuai",
         "safe_password":"123456",
         "role":"123456"
     })
 
     assert response.status_code == 422
+
+# 用户登录成功，返回信息包含access_token
+@pytest.mark.asyncio
+async def test_login_user_success(async_client):
+    response = await async_client.post("/user/register",json={
+        "username":"linshuai",
+        "safe_password":"123456",
+        "email":"zhanglinshuai01@gmail.com",
+        "role":"admin"
+    })
+    assert response.status_code == 200
+    user = await async_client.post("/user/login",json={
+        "username":"linshuai",
+        "safe_password":"123456"
+    })
+    assert user.status_code == 200
+    assert 'access_token' in user.json()
+
+# 密码错误返回401
+@pytest.mark.asyncio
+async def test_login_user_wrong_password(async_client):
+    response = await async_client.post("/user/register", json={
+        "username": "linshuai",
+        "safe_password": "123456",
+        "email": "zhanglinshuai01@gmail.com",
+        "role": "admin"
+    })
+    assert response.status_code == 200
+    user = await async_client.post("/user/login", json={
+        "username": "linshuai",
+        "safe_password": "654321"
+    })
+    assert user.status_code == 401
+# 不存在用户返回401
+@pytest.mark.asyncio
+async def test_login_user_unexist_user(async_client):
+    response = await async_client.post("/user/register", json={
+        "username": "linshuai",
+        "safe_password": "123456",
+        "email": "zhanglinshuai01@gmail.com",
+        "role": "admin"
+    })
+    assert response.status_code == 200
+    user = await async_client.post("/user/login", json={
+        "username": "linshuai01",
+        "safe_password": "123456"
+    })
+    assert user.status_code == 401
+
+@pytest.mark.asyncio
+async def test_get_current_user_access(async_client):
+    # 注册用户
+    response = await async_client.post("/user/register", json={
+        "username": "linshuai",
+        "safe_password": "123456",
+        "email": "zhanglinshuai01@gmail.com",
+        "role": "admin"
+    })
+    assert response.status_code == 200
+    # 登录用户
+    user = await async_client.post("/user/login", json={
+        "username": "linshuai",
+        "safe_password": "123456"
+    })
+    assert user.status_code == 200
+    assert 'access_token' in user.json()
+
+    token = user.json()['access_token']
+    # 带token调用/my
+    current_user = await async_client.get(
+        "/user/my",
+            headers={"Authorization": f"Bearer {token}"})
+    assert current_user.status_code == 200
+    assert current_user.json()['username'] == "linshuai"
+    assert current_user.json()['email'] == "zhanglinshuai01@gmail.com"
+    assert current_user.json()['role'] == "admin"
+    assert "safe_password" not in current_user.json()
