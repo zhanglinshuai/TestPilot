@@ -1,3 +1,5 @@
+from typing import List
+
 from fastapi import APIRouter, HTTPException
 from fastapi.params import Depends
 from sqlalchemy import select
@@ -7,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import Project, User
 from app.routers.users import get_current_user
-from app.schemas.projects import ProjectOut, ProjectCreate, ProjectUpdate
+from app.schemas.projects import ProjectOut, ProjectCreate, ProjectUpdate, ProjectDelete
 
 router = APIRouter(prefix="/project", tags=["projects"])
 
@@ -46,9 +48,9 @@ def check_project_permission(project: Project, current_user:User):
     """校验用户编辑和删除权限，目前只给创建者或者admin开放"""
     if current_user.id!=project.created_by or current_user.role!= "admin":
         raise HTTPException(status_code=403,detail="无权限，仅项目创建者或管理员可操作")
-
+    return True
 # 编辑项目
-@router.post("/update", response_model=ProjectOut)
+@router.post("/update/{project_id}", response_model=ProjectOut)
 async def update_project(
         project_id: int,
         data: ProjectUpdate,
@@ -82,3 +84,26 @@ async def update_project(
     await db.commit()
     await db.refresh(project)
     return project
+# 删除项目
+@router.delete("/delete/{project_id}")
+async def delete_project(
+        project_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    # 判断当前项目是否存在
+    project = result.scalars().first()
+    if project is None:
+        raise HTTPException(status_code=419,detail="项目不存在")
+    #判断当前用户的权限
+    if check_project_permission(project,current_user):
+        raise HTTPException(status_code=403,detail="无权限，仅项目创建者和管理员有权限")
+    # 项目逻辑软删除
+    project.is_active = False
+    project.updated_by = current_user.id
+    await db.commit()
+    await db.refresh(project)
+    return {
+        "message": "项目已删除"
+    }

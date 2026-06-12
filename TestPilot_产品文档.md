@@ -1,4 +1,4 @@
-# TestPilot 产品文档
+﻿# TestPilot 产品文档
 
 ## 1. 项目概述
 
@@ -379,95 +379,185 @@ TestPilot 的核心定位不是“让 AI 代替测试”，而是用确定性的
 | CI/CD | GitHub Actions / Jenkins |
 | 部署 | Docker Compose |
 
-## 8. 数据模型初稿
+## 8. 数据模型
 
-### 8.1 Project
+### 8.1 user（用户表）
 
-| 字段 | 说明 |
-| --- | --- |
-| id | 项目 ID |
-| name | 项目名称 |
-| description | 项目描述 |
-| repo_url | 代码仓库地址 |
-| default_env_id | 默认环境 ID |
-| created_by | 创建人 |
-| created_at | 创建时间 |
-| updated_at | 更新时间 |
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | INT, PK, AUTO_INCREMENT | ✅ | 用户 ID |
+| username | VARCHAR(50), UNIQUE | ✅ | 用户名 |
+| safe_password | VARCHAR(255) | ✅ | 加密后的密码 |
+| email | VARCHAR(255) | | 邮箱 |
+| role | VARCHAR(20) | ✅ | admin / tester / developer |
+| is_active | BOOLEAN, DEFAULT TRUE | ✅ | 软删除标记 |
+| created_at | DATETIME, DEFAULT NOW() | ✅ | 创建时间 |
+| updated_at | DATETIME, DEFAULT NOW() ON UPDATE | ✅ | 更新时间 |
 
-### 8.2 TestEnvironment
+### 8.2 project（项目表）
 
-| 字段 | 说明 |
-| --- | --- |
-| id | 环境 ID |
-| project_id | 所属项目 |
-| name | 环境名称 |
-| base_url | 服务地址 |
-| headers | 默认请求头 |
-| variables | 环境变量 |
-| is_default | 是否默认 |
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | INT, PK, AUTO_INCREMENT | ✅ | 项目 ID |
+| name | VARCHAR(100), UNIQUE | ✅ | 项目名称 |
+| description | TEXT | | 项目描述 |
+| repo_url | VARCHAR(500) | | 代码仓库地址 |
+| default_env_id | INT | | 默认环境 ID |
+| created_by | INT | ✅ | 创建人 user id |
+| updated_by | INT | | 最后修改人 user id |
+| is_active | BOOLEAN, DEFAULT TRUE | ✅ | 软删除标记 |
+| created_at | DATETIME, DEFAULT NOW() | ✅ | 创建时间 |
+| updated_at | DATETIME, DEFAULT NOW() ON UPDATE | ✅ | 更新时间 |
 
-### 8.3 ApiTestCase
+### 8.3 test_environment（测试环境表）
 
-| 字段 | 说明 |
-| --- | --- |
-| id | 用例 ID |
-| project_id | 所属项目 |
-| module | 所属模块 |
-| name | 用例名称 |
-| method | 请求方法 |
-| path | 接口路径 |
-| headers | 请求头 |
-| params | 查询参数 |
-| body | 请求体 |
-| assertions | 断言规则 |
-| priority | 优先级 |
-| tags | 标签 |
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | INT, PK, AUTO_INCREMENT | ✅ | 环境 ID |
+| project_id | INT | ✅ | 所属项目 id |
+| name | VARCHAR(100) | ✅ | dev / test / staging |
+| base_url | VARCHAR(500) | | 服务地址 |
+| headers | JSON | | 默认请求头配置 |
+| db_config | JSON | | 数据库连接配置 |
+| redis_config | JSON | | Redis 连接配置 |
+| variables | JSON | | 自定义环境变量 |
+| is_default | BOOLEAN, DEFAULT FALSE | ✅ | 是否默认环境 |
+| created_by | INT | ✅ | 创建人 user id |
+| updated_by | INT | | 最后修改人 user id |
+| is_active | BOOLEAN, DEFAULT TRUE | ✅ | 软删除标记 |
+| created_at | DATETIME, DEFAULT NOW() | ✅ | 创建时间 |
+| updated_at | DATETIME, DEFAULT NOW() ON UPDATE | ✅ | 更新时间 |
 
-### 8.4 TestRun
+### 8.4 api_test_case（接口用例表）
 
-| 字段 | 说明 |
-| --- | --- |
-| id | 执行记录 ID |
-| project_id | 所属项目 |
-| env_id | 执行环境 |
-| trigger_type | 触发方式 |
-| status | 执行状态 |
-| total_count | 总用例数 |
-| passed_count | 通过数 |
-| failed_count | 失败数 |
-| skipped_count | 跳过数 |
-| started_at | 开始时间 |
-| finished_at | 结束时间 |
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | INT, PK, AUTO_INCREMENT | ✅ | 用例 ID |
+| project_id | INT | ✅ | 所属项目 id |
+| module | VARCHAR(100) | | 所属模块 |
+| name | VARCHAR(200) | ✅ | 用例名称 |
+| method | VARCHAR(10) | ✅ | GET / POST / PUT / PATCH / DELETE |
+| path | VARCHAR(500) | ✅ | 接口路径 |
+| headers | JSON | | 请求头 |
+| params | JSON | | 查询参数 |
+| body | JSON | | 请求体 |
+| assertions | JSON | | 断言规则 |
+| pre_script | TEXT | | 前置脚本 |
+| post_script | TEXT | | 后置脚本 |
+| priority | VARCHAR(10) | | P0 / P1 / P2 / P3 |
+| tags | JSON | | 标签 |
+| created_by | INT | ✅ | 创建人 user id |
+| updated_by | INT | | 最后修改人 user id |
+| is_active | BOOLEAN, DEFAULT TRUE | ✅ | 软删除标记 |
+| created_at | DATETIME, DEFAULT NOW() | ✅ | 创建时间 |
+| updated_at | DATETIME, DEFAULT NOW() ON UPDATE | ✅ | 更新时间 |
 
-### 8.5 TestResult
+### 8.5 ui_test_case（UI 用例表）
 
-| 字段 | 说明 |
-| --- | --- |
-| id | 结果 ID |
-| run_id | 执行记录 ID |
-| case_id | 用例 ID |
-| case_type | 用例类型 |
-| status | 执行结果 |
-| duration | 执行耗时 |
-| error_message | 错误信息 |
-| request_data | 请求数据 |
-| response_data | 响应数据 |
-| screenshot_path | 截图路径 |
-| log_path | 日志路径 |
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | INT, PK, AUTO_INCREMENT | ✅ | 用例 ID |
+| project_id | INT | ✅ | 所属项目 id |
+| module | VARCHAR(100) | | 页面模块 |
+| name | VARCHAR(200) | ✅ | 用例名称 |
+| script_path | VARCHAR(500) | ✅ | Playwright 脚本路径 |
+| browser_type | VARCHAR(20) | | chromium / firefox / webkit |
+| headless | BOOLEAN, DEFAULT TRUE | ✅ | 是否无头模式 |
+| timeout | INT | | 超时时间（秒） |
+| priority | VARCHAR(10) | | P0 / P1 / P2 / P3 |
+| tags | JSON | | 标签 |
+| created_by | INT | ✅ | 创建人 user id |
+| updated_by | INT | | 最后修改人 user id |
+| is_active | BOOLEAN, DEFAULT TRUE | ✅ | 软删除标记 |
+| created_at | DATETIME, DEFAULT NOW() | ✅ | 创建时间 |
+| updated_at | DATETIME, DEFAULT NOW() ON UPDATE | ✅ | 更新时间 |
 
-### 8.6 AiAnalysis
+### 8.6 test_run（测试执行记录表）
 
-| 字段 | 说明 |
-| --- | --- |
-| id | 分析 ID |
-| result_id | 测试结果 ID |
-| analysis_type | 分析类型 |
-| input_context | 输入上下文 |
-| output_content | AI 输出 |
-| failure_category | 失败分类 |
-| created_at | 创建时间 |
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | INT, PK, AUTO_INCREMENT | ✅ | 执行记录 ID |
+| project_id | INT | ✅ | 所属项目 id |
+| env_id | INT | ✅ | 执行环境 id |
+| trigger_type | VARCHAR(20) | ✅ | manual / scheduled / cicd |
+| status | VARCHAR(20) | ✅ | pending / running / passed / failed / cancelled |
+| total_count | INT | | 总用例数 |
+| passed_count | INT | | 通过数 |
+| failed_count | INT | | 失败数 |
+| skipped_count | INT | | 跳过数 |
+| duration | FLOAT | | 总耗时（秒） |
+| started_at | DATETIME | | 开始时间 |
+| finished_at | DATETIME | | 结束时间 |
+| triggered_by | INT | ✅ | 触发人 user id |
+| is_active | BOOLEAN, DEFAULT TRUE | ✅ | 软删除标记 |
+| created_at | DATETIME, DEFAULT NOW() | ✅ | 创建时间 |
+| updated_at | DATETIME, DEFAULT NOW() ON UPDATE | ✅ | 更新时间 |
 
-## 9. 页面设计
+### 8.7 test_result（用例执行结果表）
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | INT, PK, AUTO_INCREMENT | ✅ | 结果 ID |
+| run_id | INT | ✅ | 所属执行记录 id |
+| case_id | INT | ✅ | 用例 id |
+| case_type | VARCHAR(10) | ✅ | api / ui |
+| status | VARCHAR(20) | ✅ | passed / failed / skipped / error |
+| duration | FLOAT | | 执行耗时（秒） |
+| error_message | TEXT | | 错误信息 |
+| request_data | JSON | | 请求数据 |
+| response_data | JSON | | 响应数据 |
+| screenshot_path | VARCHAR(500) | | 截图路径 |
+| log_path | VARCHAR(500) | | 日志路径 |
+| retry_count | INT, DEFAULT 0 | | 重试次数 |
+| is_active | BOOLEAN, DEFAULT TRUE | ✅ | 软删除标记 |
+| created_at | DATETIME, DEFAULT NOW() | ✅ | 创建时间 |
+| updated_at | DATETIME, DEFAULT NOW() ON UPDATE | ✅ | 更新时间 |
+
+### 8.8 ai_analysis（AI 分析记录表）
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | INT, PK, AUTO_INCREMENT | ✅ | 分析 ID |
+| result_id | INT | | 关联测试结果 id |
+| run_id | INT | | 关联执行记录 id |
+| analysis_type | VARCHAR(30) | ✅ | failure_analysis / report_summary / case_generation / defect_draft |
+| input_context | JSON | | 输入 AI 的上下文 |
+| output_content | JSON | | AI 输出内容 |
+| failure_category | VARCHAR(30) | | 失败分类 |
+| is_confirmed | BOOLEAN | | 是否已人工确认 |
+| is_active | BOOLEAN, DEFAULT TRUE | ✅ | 软删除标记 |
+| created_at | DATETIME, DEFAULT NOW() | ✅ | 创建时间 |
+| updated_at | DATETIME, DEFAULT NOW() ON UPDATE | ✅ | 更新时间 |
+
+### 8.9 defect_draft（缺陷单草稿表）
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | INT, PK, AUTO_INCREMENT | ✅ | 缺陷单 ID |
+| project_id | INT | ✅ | 所属项目 id |
+| result_id | INT | | 关联失败结果 id |
+| title | VARCHAR(300) | ✅ | 缺陷标题 |
+| module | VARCHAR(100) | | 所属模块 |
+| severity | VARCHAR(10) | | P0 / P1 / P2 / P3 |
+| priority | VARCHAR(10) | | P0 / P1 / P2 / P3 |
+| steps_to_reproduce | TEXT | | 复现步骤 |
+| actual_result | TEXT | | 实际结果 |
+| expected_result | TEXT | | 期望结果 |
+| env_info | JSON | | 环境信息 |
+| attachment_paths | JSON | | 附件路径列表 |
+| created_by | INT | ✅ | 创建人 user id |
+| updated_by | INT | | 最后修改人 user id |
+| is_active | BOOLEAN, DEFAULT TRUE | ✅ | 软删除标记 |
+| created_at | DATETIME, DEFAULT NOW() | ✅ | 创建时间 |
+| updated_at | DATETIME, DEFAULT NOW() ON UPDATE | ✅ | 更新时间 |
+
+### 8.10 工程规范
+
+- 所有表**不使用数据库外键约束**，由应用层保证数据一致性
+- 所有表包含 is_active 软删除标记，禁止物理删除
+- 业务表统一包含 created_by / updated_by 审计字段
+- 所有表包含 created_at / updated_at 时间戳
+
 
 ### 9.1 登录页
 
