@@ -13,7 +13,7 @@ from app.utils.security import hash_password
 from app.utils.security import verify_password
 router = APIRouter(prefix="/user", tags=["users"])
 
-
+#创建用户方法
 @router.post("/register", response_model=UserOut)
 async def create_user(data: UserCreate, db: AsyncSession = Depends(get_db)):
     # 检查用户名是否已经存在
@@ -40,7 +40,7 @@ async def create_user(data: UserCreate, db: AsyncSession = Depends(get_db)):
     await db.refresh(user)  # 从数据库重新读取这条数据
     return user  # 自动把SQLAlchemy转换为UserOut对象
 
-
+# 登录用户方法
 @router.post("/login")
 async def login_user(data: UserLogin, db: AsyncSession = Depends(get_db)):
     # 1. 查看用户是否存在
@@ -63,6 +63,7 @@ async def login_user(data: UserLogin, db: AsyncSession = Depends(get_db)):
             "role": user.role
         }
     }
+#获取用户方法
 @router.get("/my",response_model=UserOut)
 async def get_current_user(current_user: User = Depends(get_current_user)):
     return current_user
