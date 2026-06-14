@@ -15,7 +15,7 @@ class Project(Base):
     default_env_id: Mapped[int] = mapped_column(Integer, nullable=False)
     created_by: Mapped[int] = mapped_column(Integer, nullable=False)
     updated_by: Mapped[int] = mapped_column(Integer, nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False,default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
                                                  onupdate=func.now())

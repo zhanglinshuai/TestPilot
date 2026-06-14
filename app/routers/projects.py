@@ -1,7 +1,4 @@
-from typing import List
-
-from fastapi import APIRouter, HTTPException
-from fastapi.params import Depends
+from fastapi import APIRouter, HTTPException,Depends
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,25 +6,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import Project, User
 from app.routers.users import get_current_user
-from app.schemas.projects import ProjectOut, ProjectCreate, ProjectUpdate, ProjectDelete
+from app.schemas.projects import ProjectOut, ProjectCreate, ProjectUpdate
 
 router = APIRouter(prefix="/project", tags=["projects"])
 
 
 # 创建项目方法
 @router.post("/create", response_model=ProjectOut)
-async def create_project(data: ProjectCreate, db: AsyncSession = Depends(get_db)):
+async def create_project(
+        data: ProjectCreate,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
     # 检查项目名是否存在。存在的话不允许创建
     result = await db.execute(select(Project).where(Project.name == data.name))
     # 如果不为空说明存在
     if result.scalars().first() is not None:
-        raise HTTPException(status_code=419, detail="项目已存在")
+        raise HTTPException(status_code=419, detail="项目名已被占用")
     # 把pydantic对象转为dict给Model
     project = Project(
         name=data.name,
         description=data.description,
         repo_url=data.repo_url,
         default_env_id=data.default_env_id,
+        created_by=current_user.id,
+        updated_by=current_user.id,
     )
     # 将数据标记为待插入
     db.add(project)
@@ -35,7 +38,7 @@ async def create_project(data: ProjectCreate, db: AsyncSession = Depends(get_db)
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(status_code=419, detail="项目已存在")
+        raise HTTPException(status_code=419, detail="数据库唯一约束冲突")
     except Exception:
         await db.rollback()
         raise HTTPException(status_code=419, detail="创建项目失败")
@@ -48,7 +51,6 @@ def check_project_permission(project: Project, current_user:User):
     """校验用户编辑和删除权限，目前只给创建者或者admin开放"""
     if current_user.id!=project.created_by or current_user.role!= "admin":
         raise HTTPException(status_code=403,detail="无权限，仅项目创建者或管理员可操作")
-    return True
 # 编辑项目
 @router.post("/update/{project_id}", response_model=ProjectOut)
 async def update_project(
@@ -58,7 +60,7 @@ async def update_project(
         current_user: User = Depends(get_current_user)
 ):
     # 判断项目是否存在
-    result = await db.execute(select(Project).where(Project.id == data.id))
+    result = await db.execute(select(Project).where(Project.id == project_id))
     project = result.scalars().first()
     # 项目不存在
     if project is None:
@@ -97,8 +99,7 @@ async def delete_project(
     if project is None:
         raise HTTPException(status_code=419,detail="项目不存在")
     #判断当前用户的权限
-    if check_project_permission(project,current_user):
-        raise HTTPException(status_code=403,detail="无权限，仅项目创建者和管理员有权限")
+    check_project_permission(project,current_user)
     # 项目逻辑软删除
     project.is_active = False
     project.updated_by = current_user.id

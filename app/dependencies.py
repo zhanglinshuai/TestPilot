@@ -1,4 +1,4 @@
-from celery.bin.control import status
+from fastapi import status
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
